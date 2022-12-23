@@ -18,12 +18,12 @@ int main(int argc, char *argv[]) {
     imageSDK::ConvertProfile profile{
         .is_colorful = FLAGS_color
     };
-    auto sketchImage = imageSDK::toSketch(image, profile);
+    imageSDK::Error error;
+    auto sketchImage = imageSDK::toSketch(image, profile, error);
 //    imageSDK::pencilSketch(image);
-    if (sketchImage.has_value()) {
-        cv::imshow("sketch", sketchImage.value());
-        cv::imwrite(FLAGS_output, sketchImage.value());
-        cv::waitKey(0);
-    }
+    cv::imshow("sketch", sketchImage);
+    cv::imwrite(FLAGS_output, sketchImage);
+    cv::waitKey(0);
+
     return 0;
 }

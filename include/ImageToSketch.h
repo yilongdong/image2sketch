@@ -14,7 +14,5 @@ namespace imageSDK {
         std::string error_msg;
     };
 
-    cv::Mat toSketch(cv::Mat const& image, ConvertProfile const& profile, Error& error) noexcept;
-    std::optional<cv::Mat> toSketch(cv::Mat const& image, ConvertProfile const& profile) noexcept;
-    void pencilSketch(cv::Mat const& image);
+    cv::Mat toSketch(cv::Mat const& image, ConvertProfile const& profile, Error& error);
 }

@@ -2,124 +2,71 @@
 #include "config.h"
 
 namespace imageSDK {
+    cv::Mat toSketch(cv::Mat const& image, ConvertProfile const& profile, Error& error) {
+        // 1. 双边滤波
+        cv::Mat blur;
+        cv::bilateralFilter(image, blur, -1, 100, 15);
 
-    std::optional<cv::Mat> toSketch(cv::Mat const& image, ConvertProfile const& profile) noexcept {
-        Error error;
-        cv::Mat sketch = toSketch(image, profile, error);
-        if (!error.is_success) return std::nullopt;
-        return sketch;
-    }
+        // 2. 转灰度图
+        cv::Mat gray;
+        cv::cvtColor(blur, gray, cv::COLOR_BGR2GRAY);
 
-    void kmeansGray(cv::Mat const& src, cv::Mat& dst, int numCluster);
-    cv::Mat toSketch(cv::Mat const& image, ConvertProfile const& profile, Error& error) noexcept {
-        // cv::bilateralFilter也可以
-        cv::Mat blurMat;
-        cv::bilateralFilter(image, blurMat, -1, 100, 15);
-//        cv::blur(blurMat, blurMat, cv::Size(3, 3));
-//        cv::edgePreservingFilter(blurMat, blurMat, cv::RECURS_FILTER, 60, 0.44);
-//        cv::detailEnhance(blurMat, blurMat);
-        cv::Mat edgeMat, grayMat, thresholdMat;
-//        cv::Canny(blurMat, edgeMat, 8, 13);
-        cv::cvtColor(blurMat, grayMat, cv::COLOR_BGR2GRAY);
-        cv::adaptiveThreshold(grayMat, thresholdMat, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 11, 0);
-        cv::Mat blurThresholdMat;
-//        cv::blur(thresholdMat, thresholdMat, cv::Size(3, 3));
+        // 3. 自适应二值化
+        cv::Mat threshold;
+        cv::adaptiveThreshold(gray, threshold, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 11, 0);
+        cv::equalizeHist(threshold, threshold);
+        cv::imshow("threshold", threshold);
 
-//        thresholdMat = 255 - thresholdMat;
-//        edgeMat = 255 - edgeMat;
-        cv::equalizeHist(thresholdMat, thresholdMat);
-
-        cv::imshow("gray", grayMat);
+        // 4. 边缘检测
+        cv::Mat edge;
+        cv::Canny(gray, edge, 5, 10);
+//        cv::equalizeHist(edge, edge);
 
 
-        grayMat = grayMat;
-        cv::Mat kmeansGrayMat;
-        kmeansGray(grayMat, kmeansGrayMat, 15);
-
-        cv::Mat multiLevelGrayMat;
-        kmeansGrayMat = kmeansGrayMat * 255;
-        kmeansGrayMat.convertTo(multiLevelGrayMat, thresholdMat.type());
-//        cv::blur(multiLevelGrayMat, multiLevelGrayMat, cv::Size(7,7));
-        cv::imshow("multiLevelGrayMat", multiLevelGrayMat);
-//        cv::blur(thresholdMat, thresholdMat, cv::Size(3, 3));
-        cv::normalize(thresholdMat, thresholdMat, 0, 255, cv::NORM_MINMAX);
-        cv::imshow("threshold", thresholdMat);
-
-        cv::Mat sketch, colorfulSketch;
-        sketch = multiLevelGrayMat - thresholdMat;
-        cv::normalize(sketch, sketch, 0, 230, cv::NORM_MINMAX);
-
-        // grayMat颜色聚类
-
-        colorfulSketch = sketch;
-        error.is_success = true;
-        return profile.is_colorful ? colorfulSketch : sketch;
-    }
-    void AdaptiveCanny() {
-
-    }
-
-    void kmeansGray(cv::Mat const& src, cv::Mat& dst, int numCluster) {
-        cv::Mat source;
-        cv::Mat edgeMat, dst8u;
-//        dst.convertTo(dst8u, CV_8U);
-        cv::Canny(src, edgeMat, 10, 20);
-        cv::equalizeHist(edgeMat, edgeMat);
-        cv::imshow("edge", edgeMat);
-        src.convertTo(source, CV_32F);
-        int width = source.cols, height = source.rows;
-        cv::Mat points(width * height, 1, CV_32F, cv::Scalar(10));
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                int index = row * width + col;
-                points.at<float>(index, 0) = source.at<float>(row, col);
-            }
-        }
-        //运行kmeans
-        cv::Mat labels;
-        cv::Mat centers;
-        cv::TermCriteria criteria = cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 10, 0.1);
-        kmeans(points, numCluster, labels, criteria, 3, cv::KMEANS_PP_CENTERS, centers);
-
-        // 显示图像分割后的结果，一维转多维
+        // 5. 纹理生成 (假设纹理比图片小)
         cv::Mat texture = cv::imread(RESOURCE + "/素描纹理.png");
         cv::detailEnhance(texture, texture);
-        cv::Mat grayTexture;
-        cv::cvtColor(texture, grayTexture, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(texture, texture, cv::COLOR_BGR2GRAY);
+        texture.convertTo(texture, CV_32F);
         cv::Mat textureMap, tmpTexture, tmpSubTexture;
-        grayTexture.convertTo(textureMap, CV_32F);
-        // 假设纹理图片比输入图片小
-        cv::copyMakeBorder(textureMap, textureMap, 0, std::max(source.rows - textureMap.rows, 0), 0, std::max(source.cols - textureMap.cols, 0), cv::BORDER_WRAP);
-        tmpSubTexture = textureMap.clone();
-        cv::flip(tmpSubTexture, tmpTexture, 1);
-        textureMap += tmpTexture;
-        cv::flip(tmpSubTexture, tmpTexture, 0);
-        textureMap += tmpTexture;
-        cv::flip(tmpSubTexture, tmpTexture, -1);
-        textureMap += tmpTexture;
+        cv::copyMakeBorder(texture, texture, 0, std::max(gray.rows - texture.rows, 0), 0, std::max(gray.cols - texture.cols, 0), cv::BORDER_WRAP);
+        tmpTexture = texture.clone();
+        cv::flip(tmpTexture, textureMap, 1);
+        texture += textureMap;
+        cv::flip(tmpTexture, textureMap, 0);
+        texture += textureMap;
+        cv::flip(tmpTexture, textureMap, -1);
+        texture += textureMap;
 
+        // 6. 合成灰度图与纹理，产生光影图
+        cv::Mat shadow;
+        gray.convertTo(shadow, CV_32F);
+        cv::GaussianBlur(shadow, shadow, cv::Size(3, 3), 3,3);
+        shadow = shadow.mul(texture);
+        cv::normalize(shadow, shadow, 0, 1, cv::NORM_MINMAX);
+        cv::imshow("shandow", shadow);
 
-        cv::imwrite("new texture.png", textureMap);
-        dst = cv::Mat::zeros(source.size(), source.type());
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                int index = row * width + col;
-                int label = labels.at<int>(index, 0);
-                dst.at<float>(row, col) = centers.at<float>(label);
-            }
-        }
-        cv::GaussianBlur(dst, dst, cv::Size(3, 3), 3,3);
+        // 7. 利用边缘信息对二值图进行降噪,生成线稿图
+        cv::Mat kernel = cv::Mat::ones(cv::Size(3, 3), CV_8U);
+        cv::dilate(edge, edge, kernel, cv::Point(-1,-1), 4);
+        cv::imshow("edge", edge);
+        cv::threshold(edge, edge, 1, 1, cv::THRESH_BINARY);
+        cv::imshow("before filter", threshold);
+        threshold = threshold.mul(edge);
 
-//        cv::blur(dst, dst, cv::Size(3, 3));
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                int index = row * width + col;
-                int label = labels.at<int>(index, 0);
-                dst.at<float>(row, col) = (dst.at<float>(row, col) / 255) * textureMap.at<float>(row, col);
-            }
-        }
+        cv::imshow("after filter", threshold);
 
-        cv::normalize(dst, dst, 0, 1, cv::NORM_MINMAX);
+        // 8. 合成光影图与线稿图，产生素描图
+        shadow = shadow * 255;
+        threshold.convertTo(threshold, CV_32F);
+        cv::Mat sketch;
+        sketch = shadow - threshold;
+        cv::normalize(sketch, sketch, 0, 255, cv::NORM_MINMAX);
+        sketch.convertTo(sketch, CV_8U);
+        cv::equalizeHist(sketch, sketch);
+
+        error.is_success = true;
+        return sketch;
     }
 }
 
