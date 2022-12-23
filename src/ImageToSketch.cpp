@@ -15,6 +15,11 @@ namespace imageSDK {
             error.error_msg = "暂不支持彩色素描画转换";
             return;
         }
+        if (profile.use_sketch_texture && profile.sketch_texture_path.empty()) {
+            error.is_success = false;
+            error.error_msg = "未设置素描纹理图片的路径";
+            return;
+        }
 
         // 1. 双边滤波
         cv::Mat blur;
@@ -58,31 +63,37 @@ namespace imageSDK {
 
         // 5. 纹理生成 (假设纹理比图片小)
         // TODO: 支持比纹理更小的图片
-        cv::Mat texture = cv::imread(profile.sketch_texture_path);
-        cv::detailEnhance(texture, texture);
-        cv::cvtColor(texture, texture, cv::COLOR_BGR2GRAY);
-        texture.convertTo(texture, CV_32F);
-        if (gray.rows < texture.rows || gray.cols < texture.cols) {
-            error.is_success = false;
-            error.error_msg = "暂不支持比纹理更小的图片";
-            return;
+        cv::Mat texture;
+        if (profile.use_sketch_texture) {
+            texture = cv::imread(profile.sketch_texture_path);
+            cv::detailEnhance(texture, texture);
+            cv::cvtColor(texture, texture, cv::COLOR_BGR2GRAY);
+            texture.convertTo(texture, CV_32F);
+            if (gray.rows < texture.rows || gray.cols < texture.cols) {
+                error.is_success = false;
+                error.error_msg = "暂不支持比纹理更小的图片";
+                return;
+            }
+            cv::Mat textureMap, tmpTexture, tmpSubTexture;
+            cv::copyMakeBorder(texture, texture, 0, std::max(gray.rows - texture.rows, 0), 0,
+                               std::max(gray.cols - texture.cols, 0), cv::BORDER_WRAP);
+            tmpTexture = texture.clone();
+            cv::flip(tmpTexture, textureMap, 1);
+            texture += textureMap;
+            cv::flip(tmpTexture, textureMap, 0);
+            texture += textureMap;
+            cv::flip(tmpTexture, textureMap, -1);
+            texture += textureMap;
         }
-        cv::Mat textureMap, tmpTexture, tmpSubTexture;
-        cv::copyMakeBorder(texture, texture, 0, std::max(gray.rows - texture.rows, 0), 0,
-                           std::max(gray.cols - texture.cols, 0), cv::BORDER_WRAP);
-        tmpTexture = texture.clone();
-        cv::flip(tmpTexture, textureMap, 1);
-        texture += textureMap;
-        cv::flip(tmpTexture, textureMap, 0);
-        texture += textureMap;
-        cv::flip(tmpTexture, textureMap, -1);
-        texture += textureMap;
+
 
         // 6. 合成灰度图与纹理，产生光影图
         cv::Mat shadow;
         gray.convertTo(shadow, CV_32F);
         cv::GaussianBlur(shadow, shadow, cv::Size(3, 3), 3, 3);
-        shadow = shadow.mul(texture);
+        if (profile.use_sketch_texture) {
+            shadow = shadow.mul(texture);
+        }
         cv::normalize(shadow, shadow, 0, 1, cv::NORM_MINMAX);
         imshowIF(profile.show_debug_picture, "shandow", shadow);
 
