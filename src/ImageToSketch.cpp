@@ -20,10 +20,15 @@ namespace imageSDK {
             error.error_msg = "未设置素描纹理图片的路径";
             return;
         }
+        cv::Mat imageBGR;
+        if (image.channels() == 4) {
+            cv::cvtColor(image, imageBGR, cv::COLOR_RGBA2BGR);
+        }
+        imageBGR = image;
 
         // 1. 双边滤波
         cv::Mat blur;
-        cv::bilateralFilter(image, blur, -1,
+        cv::bilateralFilter(imageBGR, blur, -1,
                             profile.bilateral_sigma_color,
                             profile.bilateral_sigma_space);
 
@@ -110,7 +115,12 @@ namespace imageSDK {
         shadow = shadow * 255;
         sketch.convertTo(sketch, CV_32F);
         threshold.convertTo(threshold, CV_32F);
-        sketch = shadow - threshold;
+        if (profile.with_shadow) {
+            sketch = shadow - threshold;
+        } else {
+            sketch = -threshold;
+        }
+
         cv::normalize(sketch, sketch, 0, 255, cv::NORM_MINMAX);
         sketch.convertTo(sketch, CV_8U);
         cv::equalizeHist(sketch, sketch);
