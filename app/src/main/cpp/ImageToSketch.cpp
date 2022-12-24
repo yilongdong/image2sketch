@@ -15,6 +15,8 @@ namespace imageSDK {
         cv::Mat image;
         if (_image.channels() == 4) {
             cv::cvtColor(_image, image, cv::COLOR_RGBA2BGR);
+        } else {
+            image = _image;
         }
 
         // 0. 检查参数
