@@ -8,11 +8,50 @@
 
     <ImageView
         android:id="@+id/imageView"
-        android:layout_width="276dp"
-        android:layout_height="331dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="70dp"
+        android:layout_marginBottom="150dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0"
         tools:srcCompat="@tools:sample/avatars" />
+
+    <ImageButton
+        android:id="@+id/return_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:backgroundTint="@color/white"
+        app:tint="@color/black"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_revert" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/swap_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="96dp"
+        android:layout_marginBottom="52dp"
+        android:src="@drawable/ic_swap_foreground"
+        app:backgroundTint="@color/design_default_color_secondary_variant"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:maxImageSize="50dp"
+        app:tint="@color/white" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/download_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="96dp"
+        android:layout_marginBottom="52dp"
+        android:src="@android:drawable/stat_sys_download"
+        app:backgroundTint="@color/design_default_color_secondary_variant"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:tint="@color/white" />
 </androidx.constraintlayout.widget.ConstraintLayout>

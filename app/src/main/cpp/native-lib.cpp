@@ -28,9 +28,9 @@ Java_org_opencv_android_Utils_nMatToBitmap2(JNIEnv *env, jclass clazz, jlong m_a
 //    return env->NewStringUTF(result.c_str());
 //}
 extern "C"
-JNIEXPORT void JNICALL
-Java_com_scut_example_ImageAddress_imageProcess(JNIEnv *env, jobject thiz,
-                                                jobject image, jobject pattern, jobject result) {
+JNIEXPORT jboolean JNICALL
+Java_com_scut_example_ImageProcessHelper_imageProcess(JNIEnv *env, jobject thiz,
+                                                      jobject image, jobject pattern, jobject result) {
     cv::Mat src, texture, dst;
     Java_org_opencv_android_Utils_nBitmapToMat2(env, nullptr, image, (jlong) &src, 0);
     Java_org_opencv_android_Utils_nBitmapToMat2(env, nullptr, pattern, (jlong) &texture, 0);
@@ -51,4 +51,5 @@ Java_com_scut_example_ImageAddress_imageProcess(JNIEnv *env, jobject thiz,
     } else {
         LOGI(error.error_msg.c_str());
     }
+    return error.is_success;
 }

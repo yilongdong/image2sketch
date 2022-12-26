@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
+        android:name=".ImageApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,15 +13,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Example"
         tools:targetApi="31">
+<!--        android:screenOrientation="portrait"-->
         <activity
-            android:name=".MainActivity"
+            android:name=".ShowActivity"
             android:exported="false">
             <meta-data
                 android:name="android.app.lib_name"
                 android:value="" />
         </activity>
         <activity
-            android:name=".ShowActivity"
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
