@@ -14,6 +14,9 @@ interface ImageDao {
     @Query("select * from tb_image")
     fun loadAllItems(): LiveData<List<ImageEntity>>
 
+    @Query("select * from tb_image where name like '%' || :name || '%'")
+    fun queryItems(name: String): LiveData<List<ImageEntity>>
+
     @Query("delete from tb_image where id = :id")
     fun deleteItem(id: Long)
 }

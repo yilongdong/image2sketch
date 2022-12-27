@@ -12,11 +12,13 @@ namespace imageSDK {
     // TODO: 支持彩色素描画
     void toSketch(cv::Mat const &_image, cv::Mat const &pattern, cv::Mat &sketch,
                   ConvertProfile const &profile, Error &error) {
+        cv::Mat temp;
         cv::Mat image;
-        if (_image.channels() == 4) {
-            cv::cvtColor(_image, image, cv::COLOR_RGBA2BGR);
+        temp = _image.clone();
+        if (temp.channels() == 4) {
+            cv::cvtColor(temp, image, cv::COLOR_RGBA2BGR);
         } else {
-            image = _image;
+            image = temp;
         }
 
         // 0. 检查参数

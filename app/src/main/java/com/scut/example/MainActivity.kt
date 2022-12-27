@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,30 +49,31 @@ class MainActivity : AppCompatActivity() {
                     val origin = contentResolver.openFileDescriptor(uri, "r")!!.use {
                         BitmapFactory.decodeFileDescriptor(it.fileDescriptor)
                     }
-                    val fileName = "${UUID.randomUUID()}.jpg"
-                    BufferedOutputStream(FileOutputStream(File(fileDir, "origin-${fileName}")))
-                        .use {
-                            origin.compress(Bitmap.CompressFormat.JPEG, 100, it)
-                            it.flush()
-                        }
+
+                    // 转换
                     val sketch: Bitmap
                     try {
                         sketch = ImageProcessHelper.imageProcessHelper(origin)
                     }
                     catch (e: RuntimeException) {
                         Toast.makeText(this@MainActivity, "转换失败！", Toast.LENGTH_LONG).show()
-                        if (!File(fileDir, "origin-${fileName}").delete()) {
-                            throw e
-                        }
                         return@registerForActivityResult
                     }
 
+                    // 保存文件
+                    val fileName = "${UUID.randomUUID()}.jpg"
+                    BufferedOutputStream(FileOutputStream(File(fileDir, "origin-${fileName}")))
+                        .use {
+                            origin.compress(Bitmap.CompressFormat.JPEG, 100, it)
+                            it.flush()
+                        }
                     BufferedOutputStream(FileOutputStream(File(fileDir, fileName)))
                         .use {
                             sketch.compress(Bitmap.CompressFormat.JPEG, 100, it)
                             it.flush()
                         }
 
+                    // 保存到数据库并更新列表
                     thread {
                         val createTime = Timestamp(System.currentTimeMillis()).toString()
                         val id = imageDao.insertItem(ImageEntity(fileName, tempName, createTime))
@@ -90,7 +92,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        initList()
+        // 初始化列表
+        initList(null)
         val layoutManager = LinearLayoutManager(this)
         binding.recyclerView.layoutManager = layoutManager
         imageAdapter = ImageAdapter()
@@ -118,12 +121,34 @@ class MainActivity : AppCompatActivity() {
                         resultHandler.launch(intent)
                     }.show()
             }
+
+            // 搜索功能
+            searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String?): Boolean {
+                    if (!(query == null || query == "")) {
+                        initList(query)
+                        imageAdapter.flushDataSet()
+                    }
+                    return false
+                }
+
+                override fun onQueryTextChange(newText: String?): Boolean {
+                    if (newText == null || newText == "") {
+                        initList(null)
+                        imageAdapter.flushDataSet()
+                    }
+                    return false
+                }
+
+            })
         }
     }
 
     // 从数据库中获取数据
-    private fun initList() {
-        val listData = imageDao.loadAllItems()
+    private fun initList(query: String?) {
+        val listData = if (query == null) imageDao.loadAllItems()
+                        else imageDao.queryItems(query)
+        imageList.clear()
         listData.observe(this) { list ->
             list.forEach { entity ->
                 BufferedInputStream(FileInputStream(File(fileDir, entity.fileName))).use {
@@ -135,6 +160,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     inner class ImageAdapter : RecyclerView.Adapter<ImageAdapter.ViewHolder>() {
         inner class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
             val imageView: ImageView = view.findViewById(R.id.sketch_image)
@@ -144,15 +170,24 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun addItem(imageContent: ImageContent) {
-            imageList.add(imageContent)
-            notifyItemInserted(itemCount - 1)
-            notifyItemChanged(itemCount - 1)
+            val query = binding.searchView.query
+            if (query == null || query == "" || imageContent.name.contains(query)) {
+                imageList.add(imageContent)
+                notifyItemInserted(itemCount - 1)
+                notifyItemChanged(itemCount - 1)
+            }
+        }
+
+        fun flushDataSet() {
+            notifyDataSetChanged()
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.image_item, parent, false)
             val viewHolder = ViewHolder(view)
+
+            // 点击列表项将跳转到另一个页面
             viewHolder.view.setOnClickListener {
                 val imageContent = imageList[viewHolder.adapterPosition]
                 val intent = Intent(this@MainActivity, ShowActivity::class.java).apply {
@@ -160,6 +195,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 startActivity(intent)
             }
+
+            // 删除列表项
             viewHolder.deleteBtn.setOnClickListener {
                 val imageContent = imageList[viewHolder.adapterPosition]
                 val originFile = File(fileDir, imageContent.fileName)

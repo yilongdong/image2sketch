@@ -30,8 +30,10 @@ class ShowActivity : AppCompatActivity() {
 
         fileDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
 
+        // 获取上一个activity传过来的文件名
         val fileName = intent.getStringExtra("fileName")!!
 
+        // 读取两张图片
         BufferedInputStream(FileInputStream(File(fileDir, fileName))).use {
             sketchImage = BitmapFactory.decodeStream(it)
         }
@@ -42,6 +44,7 @@ class ShowActivity : AppCompatActivity() {
         binding.imageView.setImageBitmap(sketchImage);
 
         binding.apply {
+            // 暴力交换
             swapBtn.setOnClickListener {
                 val temp = originImage
                 originImage = sketchImage
@@ -49,6 +52,7 @@ class ShowActivity : AppCompatActivity() {
                 binding.imageView.setImageBitmap(sketchImage)
             }
 
+            // 把图片保存到系统相册
             downloadBtn.setOnClickListener {
                 val contentValues = contentValuesOf(
                     MediaStore.Images.ImageColumns.RELATIVE_PATH to Environment.DIRECTORY_PICTURES,

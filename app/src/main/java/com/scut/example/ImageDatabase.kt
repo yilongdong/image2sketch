@@ -12,6 +12,7 @@ abstract class ImageDatabase: RoomDatabase() {
         @Volatile
         private var instance: ImageDatabase? = null
 
+        // 双重检测懒加载
         fun getDatabase(): ImageDatabase {
             instance?.let { return it }
             synchronized(ImageDatabase::class) {

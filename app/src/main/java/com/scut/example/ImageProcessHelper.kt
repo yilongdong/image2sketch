@@ -11,7 +11,9 @@ object ImageProcessHelper {
             ImageApplication.context.resources.assets.open("texture.png"))
     }
     fun imageProcessHelper(src: Bitmap): Bitmap {
-        val result = Bitmap.createBitmap(src)
+        val result = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
+
+        // 转换失败直接抛异常
         if (!imageProcess(src, texture, result)) {
             throw RuntimeException()
         }
