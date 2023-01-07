@@ -11,7 +11,7 @@ namespace imageSDK {
         bool is_colorful{false};
         bool use_sketch_texture{true}; // 是否使用素描纹理
         bool with_shadow{true}; // 是否结合明暗灰度
-        std::string sketch_texture_path{ RESOURCE + "/素描纹理.png" };
+        std::string sketch_texture_path{ RESOURCE + "/texture2.jpeg" };
         double bilateral_sigma_color{100};
         double bilateral_sigma_space{15};
         double canny_sigma{0.4}; // 0 ~ 1.0

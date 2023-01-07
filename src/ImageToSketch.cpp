@@ -7,7 +7,9 @@ namespace imageSDK {
             cv::imshow(name, image);
         }
     }
-    // TODO: 支持彩色素描画
+    double scale(cv::Mat const& image) {
+        return std::sqrt(1280.0*720.0/double(image.cols*image.rows));
+    }
     void toSketch(cv::Mat const &image, cv::Mat& sketch, ConvertProfile const &profile, Error &error) {
         // 0. 检查参数
         if (profile.is_colorful) {
@@ -21,10 +23,16 @@ namespace imageSDK {
             return;
         }
         cv::Mat imageBGR;
-        if (image.channels() == 4) {
-            cv::cvtColor(image, imageBGR, cv::COLOR_RGBA2BGR);
-        }
         imageBGR = image;
+        if (imageBGR.channels() == 4) {
+            cv::cvtColor(imageBGR, imageBGR, cv::COLOR_RGBA2BGR);
+        }
+
+        double ratio = scale(imageBGR);
+        if(ratio<1.0){
+            cv::resize(imageBGR, imageBGR,
+                       cv::Size(int(ratio*imageBGR.cols), int(ratio*imageBGR.rows)));
+        }
 
         // 1. 双边滤波
         cv::Mat blur;
@@ -66,31 +74,33 @@ namespace imageSDK {
         double CannyHT = (1.0 + CannySigma) * (medianGrayLevel / 255.0) * profile.canny_factor;
         cv::Canny(gray, edge, CannyLT, CannyHT);
 
-        // 5. 纹理生成 (假设纹理比图片小)
-        // TODO: 支持比纹理更小的图片
+        // 5. 纹理生成
         cv::Mat texture;
         if (profile.use_sketch_texture) {
             texture = cv::imread(profile.sketch_texture_path);
             cv::detailEnhance(texture, texture);
             cv::cvtColor(texture, texture, cv::COLOR_BGR2GRAY);
             texture.convertTo(texture, CV_32F);
-            if (gray.rows < texture.rows || gray.cols < texture.cols) {
+            ratio = std::max(0.25*gray.rows/(double)texture.rows, 0.25*gray.cols/(double)texture.cols);
+            if (int(ratio*texture.cols)==0 || int(ratio*texture.rows)==0) {
                 error.is_success = false;
-                error.error_msg = "暂不支持比纹理更小的图片";
+                error.error_msg = "图片尺寸太小";
                 return;
             }
-            cv::Mat textureMap, tmpTexture, tmpSubTexture;
+            cv::resize(texture, texture,
+                       cv::Size(int(ratio*texture.cols), int(ratio*texture.rows)));
+
+            cv::threshold(texture, texture, 127, 255, cv::THRESH_TOZERO);
+
+//            cv::Mat tmpTexture;
             cv::copyMakeBorder(texture, texture, 0, std::max(gray.rows - texture.rows, 0), 0,
                                std::max(gray.cols - texture.cols, 0), cv::BORDER_WRAP);
-            tmpTexture = texture.clone();
-            cv::flip(tmpTexture, textureMap, 1);
-            texture += textureMap;
-            cv::flip(tmpTexture, textureMap, 0);
-            texture += textureMap;
-            cv::flip(tmpTexture, textureMap, -1);
-            texture += textureMap;
+//            tmpTexture = texture.clone();
+//            cv::flip(tmpTexture, tmpTexture, 1);
+//            texture = texture.mul(tmpTexture);
         }
-
+        cv::normalize(texture, texture, 0, 1, cv::NORM_MINMAX);
+        imshowIF(profile.show_debug_picture, "texture", texture);
 
         // 6. 合成灰度图与纹理，产生光影图
         cv::Mat shadow;
@@ -100,21 +110,22 @@ namespace imageSDK {
             shadow = shadow.mul(texture);
         }
         cv::normalize(shadow, shadow, 0, 1, cv::NORM_MINMAX);
-        imshowIF(profile.show_debug_picture, "shandow", shadow);
+        imshowIF(profile.show_debug_picture, "shadow", shadow);
 
         // 7. 利用边缘信息对二值图进行降噪,生成线稿图
         cv::Mat kernel = cv::Mat::ones(cv::Size(profile.edge_dilate_size, profile.edge_dilate_size), CV_8U);
         cv::dilate(edge, edge, kernel, cv::Point(-1, -1), profile.edge_dilate_times);
-        imshowIF(profile.show_debug_picture, "edge", edge);
+        edge.convertTo(edge, CV_32F);
         cv::threshold(edge, edge, 1, 1, cv::THRESH_BINARY);
+        imshowIF(profile.show_debug_picture, "edge", edge);
         imshowIF(profile.show_debug_picture, "threshold", threshold);
+        threshold.convertTo(threshold, CV_32F);
         threshold = threshold.mul(edge);
         imshowIF(profile.show_debug_picture, "threshold mul edge", threshold);
 
         // 8. 合成光影图与线稿图，产生素描图
         shadow = shadow * 255;
         sketch.convertTo(sketch, CV_32F);
-        threshold.convertTo(threshold, CV_32F);
         if (profile.with_shadow) {
             sketch = shadow - threshold;
         } else {

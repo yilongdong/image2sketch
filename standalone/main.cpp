@@ -17,9 +17,9 @@ int main(int argc, char *argv[]) {
     cv::Mat image = cv::imread(FLAGS_image_path, -1);
     imageSDK::ConvertProfile profile;
     profile.show_debug_picture = true;
-    profile.use_sketch_texture = false;
-    profile.edge_dilate_times = 1;
-    profile.with_shadow = false;
+    profile.use_sketch_texture = true;
+//    profile.edge_dilate_times = 1;
+//    profile.with_shadow = false;
     imageSDK::Error error;
     cv::Mat sketch;
     imageSDK::toSketch(image, sketch, profile, error);
