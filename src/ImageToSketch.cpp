@@ -92,12 +92,8 @@ namespace imageSDK {
 
             cv::threshold(texture, texture, 127, 255, cv::THRESH_TOZERO);
 
-//            cv::Mat tmpTexture;
             cv::copyMakeBorder(texture, texture, 0, std::max(gray.rows - texture.rows, 0), 0,
                                std::max(gray.cols - texture.cols, 0), cv::BORDER_WRAP);
-//            tmpTexture = texture.clone();
-//            cv::flip(tmpTexture, tmpTexture, 1);
-//            texture = texture.mul(tmpTexture);
         }
         cv::normalize(texture, texture, 0, 1, cv::NORM_MINMAX);
         imshowIF(profile.show_debug_picture, "texture", texture);
